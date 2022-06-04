@@ -29,7 +29,8 @@ def predict(image_path, model, top_k):
     
     probs, classes = tf.math.top_k(prob_pred, k=top_k)
     probs=probs.numpy().tolist()[0]
-    classes=classes.numpy().tolist()[0]
+    labels=classes.numpy().tolist()[0]
+    classes = [class_names[str(int(idd)+1)] for idd in labels]
     return probs,classes
 
 
@@ -53,8 +54,27 @@ if __name__ == '__main__':
         class_names = json.load(f)
     
     image_path = args.image_path  
-    model = tf.keras.models.load_model(args.pretrained_model, custom_objects={'KerasLayer':hub.KerasLayer} )
-    print(model.summary())
+    
+    # Declare variables
+    num_classes = 102
+    IMAGE_RES = 224
+
+    # Create a Feature Extractor
+    URL = "https://tfhub.dev/google/tf2-preview/mobilenet_v2/feature_vector/4"
+    feature_extractor = hub.KerasLayer(URL, input_shape=(IMAGE_RES, IMAGE_RES, 3))
+    # Freeze the Pre-Trained Model
+    feature_extractor.trainable = False
+    # Attach a classification head
+    model = tf.keras.Sequential([
+      feature_extractor,
+      tf.keras.layers.Dense(num_classes, activation='softmax')
+    ])
+
+    # TODO: Load the Keras model
+    #reloaded_model = tf.keras.models.load_model('./keras_model.h5',custom_objects={'KerasLayer':hub.KerasLayer})
+
+    model.load_weights('./keras_model.h5')
+
     top_k = args.top_k
     
     probs, classes = predict(image_path, model, top_k)
